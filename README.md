@@ -1,186 +1,55 @@
 # Secure OTA Firmware Update Platform
 
-A portfolio-grade reference implementation of a secure firmware-update platform for embedded devices.
+A secure embedded firmware update platform designed to demonstrate **firmware lifecycle management, secure boot concepts, OTA/FOTA updates, cryptographic verification, version control and rollback mechanisms** for connected embedded devices.
 
-> **Important:** This repository is a complete runnable software demonstration of the architecture. The default demo runs entirely on a host computer so it can be tested without physical hardware. The embedded/Zephyr integration points are documented for later hardware deployment.
+The project models an end-to-end firmware update workflow in which a firmware image is built, versioned, cryptographically signed and published through an OTA server. The device checks the firmware version, downloads the update, validates its integrity and authenticity, stages the image and activates it only after successful verification.
 
-## What this project demonstrates
+The system also handles **firmware corruption, invalid signatures, downgrade attempts and failed updates**, ensuring that an invalid firmware image is rejected and the previously active firmware remains available through rollback.
 
-- Firmware version management
-- Firmware image metadata
-- SHA-256 integrity verification
-- Ed25519 digital-signature verification
-- OTA-style firmware download
-- Version policy / anti-downgrade check
-- Atomic update staging
-- Rollback after a failed activation
-- Device state machine
-- REST API firmware server
-- Automated unit/integration tests
-- CI-ready project structure
+### Key Features
 
-## Architecture
+* Firmware version and release management
+* SHA-256 firmware integrity verification
+* Ed25519 digital-signature verification
+* OTA/FOTA firmware delivery
+* Firmware staging and activation
+* Anti-downgrade version validation
+* Failed-update rollback mechanism
+* REST-based firmware server
+* Automated validation and test cases
+* CI-ready GitHub Actions workflow
+* Architecture and security documentation
 
-```text
-                    ┌─────────────────────────────┐
-                    │      Firmware Builder       │
-                    │  version + image + signing  │
-                    └──────────────┬──────────────┘
-                                   │
-                                   ▼
-                    ┌─────────────────────────────┐
-                    │      OTA Firmware Server    │
-                    │        FastAPI / HTTP       │
-                    └──────────────┬──────────────┘
-                                   │
-                              GET /firmware
-                                   │
-                                   ▼
-                    ┌─────────────────────────────┐
-                    │       Device Simulator      │
-                    │                             │
-                    │  Check version             │
-                    │  Download                  │
-                    │  SHA-256                   │
-                    │  Signature verification    │
-                    │  Stage image               │
-                    │  Activate                  │
-                    │  Rollback                  │
-                    └─────────────────────────────┘
-```
+### Technology Stack
 
-## Quick start
+**C / Embedded Systems concepts | Python | ARM Cortex-M architecture | Zephyr RTOS concepts | OTA/FOTA | Bootloader architecture | Cryptography | REST API | Linux | Git/GitHub | CI/CD**
 
-Requires Python 3.11+.
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-Windows PowerShell:
-
-```powershell
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-```
-
-Run the complete demo:
-
-```bash
-python scripts/demo.py
-```
-
-Run tests:
-
-```bash
-pytest -q
-```
-
-Start the OTA server:
-
-```bash
-uvicorn server.app:app --reload
-```
-
-Then open:
+### System Workflow
 
 ```text
-http://127.0.0.1:8000/docs
+Firmware Source
+      ↓
+Build & Version
+      ↓
+Cryptographic Signing
+      ↓
+OTA Firmware Server
+      ↓
+Device Checks Version
+      ↓
+Firmware Download
+      ↓
+SHA-256 + Signature Verification
+      ↓
+Firmware Staging
+      ↓
+Activation
+      ↓
+Successful Update
+      │
+      └── Failure → Rollback
 ```
 
-## Demo flow
+### Engineering Objective
 
-The demo creates a signed firmware v1.0.0, starts the server, provisions the device, downloads and verifies the image, and activates it.
-
-It then creates v1.1.0 and performs another OTA update.
-
-Finally, it creates a deliberately corrupted firmware package. The device rejects the corrupted image and retains the previously active firmware.
-
-Expected high-level result:
-
-```text
-Firmware v1.0.0 -> installed
-Firmware v1.1.0 -> installed
-Corrupted image -> rejected
-Active firmware  -> v1.1.0
-```
-
-## Project structure
-
-```text
-secure-ota-firmware-platform/
-├── firmware/
-│   └── sample/
-│       ├── v1.0.0.bin
-│       └── v1.1.0.bin
-├── ota/
-│   ├── client.py
-│   ├── crypto.py
-│   ├── image.py
-│   └── storage.py
-├── server/
-│   ├── app.py
-│   └── repository.py
-├── scripts/
-│   ├── build_firmware.py
-│   ├── generate_keys.py
-│   └── demo.py
-├── tests/
-│   ├── test_crypto.py
-│   ├── test_image.py
-│   └── test_update_flow.py
-├── docs/
-│   ├── architecture.md
-│   ├── bootloader.md
-│   ├── ota.md
-│   ├── secure_boot.md
-│   └── validation.md
-├── embedded/
-│   └── README.md
-├── requirements.txt
-└── .github/workflows/ci.yml
-```
-
-## Security model
-
-The demonstration uses:
-
-1. **SHA-256** to detect image modification.
-2. **Ed25519 signatures** to authenticate the firmware publisher.
-3. **Monotonic firmware versions** to reject downgrades.
-4. **Atomic staging** so an incomplete update is not activated.
-5. **Rollback** if activation fails.
-
-This is a learning/portfolio implementation, not production automotive security firmware. Production devices require hardware-backed keys, secure key provisioning, secure boot ROM/root-of-trust support, protected flash, anti-rollback counters and platform-specific threat modelling.
-
-## Hardware deployment path
-
-The software architecture is intentionally separated from the device-specific layer. The `embedded/` directory documents how the same state machine maps to a Zephyr/ARM Cortex-M implementation.
-
-Recommended future target:
-
-- ARM Cortex-M MCU
-- Zephyr RTOS
-- MCUboot or a comparable bootloader
-- Device networking through Wi-Fi/Ethernet
-- Protected key storage
-- Hardware-backed secure boot where supported
-
-## Interview discussion points
-
-Be prepared to explain:
-
-- Why a hash alone does not provide authenticity.
-- Why signatures are required.
-- Why an update should be staged before activation.
-- How rollback protects against interrupted or bad updates.
-- Why version checks prevent downgrade attacks.
-- How the host simulator maps to a real MCU bootloader.
-- How RTOS tasks would separate sensing, communication, update and monitoring.
-
-## License
-
-MIT License.
+The project is designed as a foundation for deployment on an **ARM Cortex-M embedded target running Zephyr RTOS**, with a production-oriented architecture based on secure boot, protected firmware images, power-loss-safe updates and hardware-backed key management.
